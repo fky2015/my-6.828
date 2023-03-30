@@ -1,0 +1,6 @@
+usertrap
+0x7
+user mode
+lw a3,0(zero) a3
+No, Load page fault
+initcode, 0x1
