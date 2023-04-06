@@ -64,7 +64,10 @@ pgaccess_test()
   if (pgaccess(buf, 32, &abits) < 0)
     err("pgaccess failed");
   if (abits != ((1 << 1) | (1 << 2) | (1 << 30)))
+  {
+    printf("abits = %x\n", abits);
     err("incorrect access bits set");
+  }
   free(buf);
   printf("pgaccess_test: OK\n");
 }

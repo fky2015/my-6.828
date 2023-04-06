@@ -1,0 +1,29 @@
+## Spead up system calls
+
+Q: Which other xv6 system call(s) could be made faster using this shared page? Explain how.
+
+A: sysinfo, because it also read pid.
+
+
+Q: Explain the output of vmprint in terms of Fig 3-4 from the text. What does page 0 contain? What is in page 2? When running in user mode, could the process read/write the memory mapped by page 1? What does the third to last page contain?
+
+A:
+```
+page table 0x0000000087f6b000
+ ..0: pte 0x0000000021fd9c01 pa 0x0000000087f67000
+ .. ..0: pte 0x0000000021fd9801 pa 0x0000000087f66000
+ .. .. ..0: pte 0x0000000021fda01b pa 0x0000000087f68000
+ .. .. ..1: pte 0x0000000021fd9417 pa 0x0000000087f65000
+ .. .. ..2: pte 0x0000000021fd9007 pa 0x0000000087f64000
+```
+>>> bin(0x1b)
+'0b11011'
+>>> bin(0x07)
+'0b00111'
+
+page 0 contains the user's program text section, page 2 is a guard page.
+Yes, the process could read/write the mamory mapped by page1.
+page 3: heap
+page 509: sysinfo page.
+page 510: trapframe.
+page 511: trampoline.

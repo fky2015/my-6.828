@@ -1,0 +1,29 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/riscv64-linux-gnu-gcc",
+      "-Wall",
+      "-Werror",
+      "-O",
+      "-fno-omit-frame-pointer",
+      "-ggdb",
+      "-gdwarf-2",
+      "-DSOL_PGTBL",
+      "-DLAB_PGTBL",
+      "-mcmodel=medany",
+      "-ffreestanding",
+      "-fno-common",
+      "-mno-relax",
+      "-I.",
+      "-fno-stack-protector",
+      "-fno-pie",
+      "-c",
+      "-o",
+      "kernel/proc.o",
+      "kernel/proc.c"
+    ],
+    "directory": "/home/fky/code/6.828/xv6-labs-2022",
+    "file": "/home/fky/code/6.828/xv6-labs-2022/kernel/proc.c",
+    "output": "/home/fky/code/6.828/xv6-labs-2022/kernel/proc.o"
+  }
+]
