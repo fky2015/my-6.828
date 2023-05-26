@@ -65,19 +65,48 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if((which_dev = devintr()) != 0){
+  } else if ((which_dev = devintr()) != 0) {
     // ok
+  } else if (r_scause() == 15) {
+    // Store/AMO page fault
+    // printf("CoW page fault!\n");
+    
+    if (killed(p))
+      exit(-1);
+
+    // Get the user address of page fault.
+    uint64 va = r_stval();
+    if(va >= MAXVA)
+    {
+      printf("usertrap()(page-fault): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      setkilled(p);
+    } else {
+      pte_t *pte = walk(p->pagetable, va, 0);
+
+      int ret = de_cow(p->pagetable, pte, va);
+
+      if (ret == 1) {
+        // Kill invalid process.
+        printf("usertrap()(page-fault): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+        printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+        setkilled(p);
+      } else if (ret == 2) {
+        setkilled(p);
+      } 
+    }
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     setkilled(p);
+    printf("proc kill p: %d\n", p->pid);
   }
 
-  if(killed(p))
+  if (killed(p))
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if (which_dev == 2)
     yield();
 
   usertrapret();

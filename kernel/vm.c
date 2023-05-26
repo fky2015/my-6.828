@@ -305,31 +305,44 @@ uvmfree(pagetable_t pagetable, uint64 sz)
 int
 uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 {
+  // Clear PTE_W in the PTEs of both child and parent for pages that have PTE_W set.
   pte_t *pte;
-  uint64 pa, i;
-  uint flags;
-  char *mem;
+  uint64 i;
 
+  // printf("[uvmcopy] sz: %d\n", sz);
+  
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
-    pa = PTE2PA(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
-      goto err;
-    }
-  }
-  return 0;
+    
+    // Move PTE_W bit to RSW bit.
+    *pte |= (((*pte & PTE_W) >> 2) << 8);
+    // Remove PTE_W.
+    *pte &= ~PTE_W;
 
- err:
-  uvmunmap(new, 0, i / PGSIZE, 1);
-  return -1;
+    uint64 pa = PTE2PA(*pte);
+    // map this COW page to new.
+    kref((void *) pa);
+    
+    if (mappages(new, i, PGSIZE, pa, PTE_FLAGS(*pte)) == 0) {
+      
+    } else {
+      // Failed.
+      kfree((void*)pa);
+      panic("[uvmcopy] cannot mappages for the COW page.");
+    }
+    
+  }
+  
+  // WARN: It's a wrong step.
+  // "Map the parent's physical pages into the child."
+  // Because pageTable is a tree. It cannot be just assign 
+  // the root.
+  // *new = *old;
+  
+  return 0;
 }
 
 // mark a PTE invalid for user access.
@@ -348,6 +361,8 @@ uvmclear(pagetable_t pagetable, uint64 va)
 // Copy from kernel to user.
 // Copy len bytes from src to virtual address dstva in a given page table.
 // Return 0 on success, -1 on error.
+//
+// Add a case when encounter COW pages.
 int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
@@ -356,6 +371,32 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     pa0 = walkaddr(pagetable, va0);
+    if(pa0 == 0)
+      return -1;
+    
+    if(va0 >= MAXVA)
+      return -1;
+    pte_t * pte = walk(pagetable, va0, 0);
+
+    int cow_page = 0;
+    if (*pte & RSV_1) {
+      cow_page = 1;
+      // printf("[copyout] find a cow page va: %p pa: %p, try de_cow.\n", va0, pa0);
+      int ret = de_cow(pagetable, pte, dstva);
+      if (ret != 0)
+        return -1;
+    }
+    
+    pte = walk(pagetable, va0, 0);
+
+    if ((*pte & RSV_1) && *pte ) {
+      panic("cannot be COW page!\n");
+    }
+    
+    pa0 = walkaddr(pagetable, va0);
+    if (cow_page) {
+      // printf("[copyout] new pa: %p\n", pa0);
+    }
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
