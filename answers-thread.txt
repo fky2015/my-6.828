@@ -1,0 +1,21 @@
+Q: Why are there missing keys with 2 threads, but not with 1 thread? Identify a sequence of events with 2 threads that can lead to a key being missing.
+
+A:
+1:  for (e = table[i]; e != 0; e = e->next) {
+2:    if (e->key == key)
+3:      break;
+4:  }
+5:  if(e){
+6:    // update the existing key.
+7:    e->value = value;
+8:  } else {
+9:    // the new is new.
+10:   insert(key, value, &table[i], table[i]);
+11: }
+
+Thread 1 and 2 are hit the same bucket. Then thread 1 and 2
+both run into loop and not find any matched keys.
+Then both threads run into line 10 and insert() 
+with same 3rd & 4th arguments.
+In the function insert, both threads execute 
+`*p = e` with same `*p`;

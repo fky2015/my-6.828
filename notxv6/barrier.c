@@ -29,8 +29,20 @@ barrier()
   //
   // Block until all threads have called barrier() and
   // then increment bstate.round.
-  //
   
+  // Add uthread, if 
+  pthread_mutex_lock(&bstate.barrier_mutex);
+  bstate.nthread += 1;
+  if (bstate.nthread == nthread) {
+    bstate.round += 1;
+    // Wake up others.
+    pthread_cond_broadcast(&bstate.barrier_cond);
+    bstate.nthread = 0;
+  } else {
+    pthread_cond_wait(&bstate.barrier_cond, &bstate.barrier_mutex);
+  }
+  pthread_mutex_unlock(&bstate.barrier_mutex);
+
 }
 
 static void *
